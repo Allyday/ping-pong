@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 	<title>Ping Pong Game</title>
 </head>
+
 <body>
 	<canvas id="canvas" width="800" height="400"></canvas>
 	<script type="text/javascript" src="js/app.js"></script>
@@ -16,21 +18,21 @@
 			ballSize: 0.01,
 		}
 
-		app.onInit = function() {
+		app.onInit = function () {
 			document.body.style.margin = "0px";
 			const canvas = document.getElementById("canvas");
-			canvas.width = window.innerWidth; 
+			canvas.width = window.innerWidth;
 			canvas.height = window.innerHeight;
 			this.width = canvas.width;
 			this.height = canvas.height;
 
 			this.nodes.push({
-				id : CONST.player1,
-				x  : 0,
-				y  : app.height * (1 - CONST.playerHeight) / 2,
-				width  : app.width * CONST.playerWidth,
-				height : app.height * CONST.playerHeight,
-				color  : '#e22a32',
+				id: CONST.player1,
+				x: 0,
+				y: app.height * (1 - CONST.playerHeight) / 2,
+				width: app.width * CONST.playerWidth,
+				height: app.height * CONST.playerHeight,
+				color: '#e22a32',
 			});
 
 			this.nodes.push({
@@ -49,21 +51,47 @@
 				width: app.width * CONST.ballSize,
 				height: app.width * CONST.ballSize,
 				color: '#f8d212',
-				direction: 0,
+				movement: { angle: Math.random() * Math.PI - Math.PI / 2, velocity: 5 },
 			});
 		};
 
-		app.onUpdate = function(time){
-			this.getNode('black-box').y++;
+		app.onUpdate = function (time) {
+			const ball = this.getNode(CONST.ball);
+			const p1 = this.getNode(CONST.player1);
+			const p2 = this.getNode(CONST.player2);
 
-			if(Math.cos(this.timestamp / 100) > 0){
-				this.getNode('red-box').direction = -1;
-			}else{
-				this.getNode('red-box').direction = 1;
+			if (!ball.movement || !ball.movement.velocity) return;
+
+			if (((ball.x < p1.x + p1.width) && (ball.y > p1.y - ball.height) && (ball.y < p1.y + p1.height))
+				|| ((ball.x > p2.x) && (ball.y > p2.y - ball.height) && (ball.y < p2.y + p2.height))
+			) {
+				/* ball bounces when hit players' paddles */
+				ball.movement.angle = ball.movement.angle > 0 ? (Math.PI - ball.movement.angle) : (-Math.PI - ball.movement.angle);
+			} else if (ball.y > app.height || ball.y < 0) {
+				/* ball bounces off ceiling & floor */
+				ball.movement.angle *= -1;
+			} else if (ball.x + ball.width > app.width) {
+				ball.movement.velocity = 0;
+				console.log('Player 1 wins!!');
+			} else if (ball.x < 0) {
+				ball.movement.velocity = 0;
+				console.log('Player 2 wins!!');
 			}
 
-			this.getNode('red-box').x+=this.getNode('red-box').direction;
+			const { angle, velocity } = ball.movement;
+			const vector = calcMovementVector(angle);
+			ball.x += vector.x * velocity;
+			ball.y += vector.y * velocity;
 		};
+
+		function calcMovementVector(angle) {
+			return {
+				x: Math.cos(angle),
+				y: Math.sin(angle),
+			};
+		}
+
 	</script>
 </body>
+
 </html>
