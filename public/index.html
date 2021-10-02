@@ -15,8 +15,13 @@
 			ball: 'ball',
 			playerWidth: 0.015,
 			playerHeight: 0.2,
+			playerPadding: 0.005,
 			ballSize: 0.01,
+			up: 'up',
+			down: 'down',
 		}
+
+		const state = { p1: '', p2: '', ballVelocity: 8, playerVelocity: 8 };
 
 		app.onInit = function () {
 			document.body.style.margin = "0px";
@@ -28,7 +33,7 @@
 
 			this.nodes.push({
 				id: CONST.player1,
-				x: 0,
+				x: app.width * CONST.playerPadding,
 				y: app.height * (1 - CONST.playerHeight) / 2,
 				width: app.width * CONST.playerWidth,
 				height: app.height * CONST.playerHeight,
@@ -37,7 +42,7 @@
 
 			this.nodes.push({
 				id: CONST.player2,
-				x: app.width * (1 - CONST.playerWidth), // far right
+				x: app.width * (1 - CONST.playerWidth - CONST.playerPadding), // far right
 				y: app.height * (1 - CONST.playerHeight) / 2,
 				width: app.width * CONST.playerWidth,
 				height: app.height * CONST.playerHeight,
@@ -51,8 +56,21 @@
 				width: app.width * CONST.ballSize,
 				height: app.width * CONST.ballSize,
 				color: '#f8d212',
-				movement: { angle: Math.random() * Math.PI - Math.PI / 2, velocity: 5 },
+				angle: Math.random() * Math.PI / 2 - Math.PI / 4 ,
 			});
+
+			document.addEventListener('keydown', event => {
+				if (event.code === 'KeyW') state.p1 = CONST.up;
+				if (event.code === 'KeyS') state.p1 = CONST.down;
+				if (event.code === 'ArrowUp') state.p2 = CONST.up;
+				if (event.code === 'ArrowDown') state.p2 = CONST.down;
+			}, false);
+
+			document.addEventListener('keyup', event => {
+				if (event.code === 'KeyW' || event.code === 'KeyS') state.p1 = '';
+				if (event.code === 'ArrowUp' || event.code === 'ArrowDown') state.p2 = '';
+			})
+
 		};
 
 		app.onUpdate = function (time) {
@@ -60,21 +78,33 @@
 			const p1 = this.getNode(CONST.player1);
 			const p2 = this.getNode(CONST.player2);
 
-			if (!ball.movement || !ball.movement.velocity) return;
+			if (!ball.angle || !state.ballVelocity) return;
 
-			if (((ball.x < p1.x + p1.width) && (ball.y > p1.y - ball.height) && (ball.y < p1.y + p1.height))
-				|| ((ball.x > p2.x) && (ball.y > p2.y - ball.height) && (ball.y < p2.y + p2.height))
+			if (state.p1 === CONST.up && p1.y > 0) {
+				p1.y -= state.playerVelocity;
+			} else if (state.p1 === CONST.down && p1.y + p1.height < app.height) {
+				p1.y += state.playerVelocity;
+			}
+
+			if (state.p2 === CONST.up && p2.y > 0) {
+				p2.y -= state.playerVelocity;
+			} else if (state.p2 === CONST.down && p2.y + p2.height < app.height) {
+				p2.y += state.playerVelocity;
+			}
+
+			if (((ball.x <= p1.x + p1.width) && (ball.y >= p1.y - ball.height) && (ball.y <= p1.y + p1.height)) // hits p1
+				|| ((ball.x >= p2.x - ball.width) && (ball.y >= p2.y - ball.height) && (ball.y <= p2.y + p2.height)) // hits p2
 			) {
 				/* ball bounces when hit players' paddles */
-				ball.movement.angle = ball.movement.angle > 0 ? (Math.PI - ball.movement.angle) : (-Math.PI - ball.movement.angle);
-			} else if (ball.y > app.height || ball.y < 0) {
+				ball.angle = ball.angle > 0 ? (Math.PI - ball.angle) : (-Math.PI - ball.angle);
+			} else if (ball.y > app.height - ball.height || ball.y < 0) {
 				/* ball bounces off ceiling & floor */
 				ball.movement.angle *= -1;
 			} else if (ball.x + ball.width > app.width) {
-				ball.movement.velocity = 0;
+				state.ballVelocity = 0;
 				console.log('Player 1 wins!!');
 			} else if (ball.x < 0) {
-				ball.movement.velocity = 0;
+				state.ballVelocity = 0;
 				console.log('Player 2 wins!!');
 			}
 
