@@ -11,7 +11,9 @@
 	<script type="text/javascript" src="js/app.js"></script>
 	<script type="text/javascript" src="js/constants.js"></script>
 	<script type="text/javascript" src="js/utils.js"></script>
-	<script type="text/javascript">
+	<script type="module">
+		import { Ball } from './js/Ball.js';
+
 		const state = { p1: '', p2: '', ballVelocity: 8, playerVelocity: 8, is: '' };
 
 		app.onInit = function () {
@@ -131,16 +133,8 @@
 				height: app.height * CONST.playerHeight,
 			};
 
-			const ball = {
-				id: CONST.ball,
-				x: app.width / 2,
-				y: app.height / 2,
-				width: app.width * CONST.ballSize,
-				height: app.width * CONST.ballSize,
-				angle: Math.random() * Math.PI / 2 - Math.PI / 4, // 90 degree range, turned to the right (towards p2)
-			};
-
-			app.nodes.push(ball, p1, p2);
+			const ball = new Ball(CONST.ball, this.canvas, CONST.ballSize, '#ccc');
+			this.nodes.push(ball, p1, p2);
 			switchColors(state.is, ball, p1, p2);
 		}
 
