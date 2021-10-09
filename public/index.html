@@ -13,8 +13,9 @@
 	<script type="text/javascript" src="js/utils.js"></script>
 	<script type="module">
 		import { Ball } from './js/Ball.js';
+		import { CanvasNode } from './js/CanvasNode.js';
 
-		const state = { p1: '', p2: '', ballVelocity: 8, playerVelocity: 8, is: '' };
+		const state = { p1: '', p2: '', is: '' };
 
 		app.onInit = function () {
 			document.body.style.margin = "0px";
@@ -47,40 +48,28 @@
 			const ball = this.getNode(CONST.ball);
 			const p1 = this.getNode(CONST.player1);
 			const p2 = this.getNode(CONST.player2);
+			const up = { x: 0, y: -1 };
+			const down = { x: 0, y: 1 };
 
-			if (!ball.angle || !state.ballVelocity || state.is !== CONST.PLAYING) return;
+			if (state.is !== CONST.PLAYING) return;
 
-			if (state.p1 === CONST.up && p1.y > 0) {
-				p1.y -= state.playerVelocity;
-			} else if (state.p1 === CONST.down && p1.y + p1.height < this.height) {
-				p1.y += state.playerVelocity;
-			}
+			if (state.p1 === CONST.up && !p1.hitsCeiling())
+				p1.moves(up);
+			else if (state.p1 === CONST.down && !p1.hitsFloor(this.canvas))
+				p1.moves(down);
 
-			if (state.p2 === CONST.up && p2.y > 0) {
-				p2.y -= state.playerVelocity;
-			} else if (state.p2 === CONST.down && p2.y + p2.height < this.height) {
-				p2.y += state.playerVelocity;
-			}
+			if (state.p2 === CONST.up && !p2.hitsCeiling())
+				p2.moves(up);
+			else if (state.p2 === CONST.down && !p2.hitsFloor(this.canvas))
+				p2.moves(down);
 
-			const ballIsWithinP1Height = (ball.y >= p1.y - ball.height) && (ball.y <= p1.y + p1.height);
-			const ballIsWithinP2Height = (ball.y >= p2.y - ball.height) && (ball.y <= p2.y + p2.height);
-
-			if ((ball.x == p1.x + p1.width) && ballIsWithinP1Height) {
-				/* how far is the collision from the center */
-				const relativeHeightDiff = (p1.y + (p1.height / 2)) - ball.y;
-				const bounceIntensity = relativeHeightDiff / (p1.height / 2);
-				const bounceAngle = bounceIntensity * CONST.maxBounceAngle;
-				state.ballVelocity *= CONST.acceleration; // accelerate to make the game fun
-				state.playerVelocity *= CONST.acceleration;
-				ball.angle = bounceAngle;
-			} else if ((ball.x == p2.x - ball.width) && ballIsWithinP2Height) {
-				const relativeHeightDiff = (p2.y + (p2.height / 2)) - ball.y;
-				const bounceIntensity = relativeHeightDiff / (p2.height / 2);
-				const bounceAngle = bounceIntensity * CONST.maxBounceAngle;
-				state.ballVelocity *= CONST.acceleration;
-				state.playerVelocity *= CONST.acceleration;
-				ball.angle = Math.PI - bounceAngle;
-			} else if (ball.y > this.height - ball.height || ball.y < 0) {
+			if (ball.collidesWith(p1)) {
+				ball.bouncesFrom(p1);
+				this.accelerate();
+			} else if (ball.collidesWith(p2)) {
+				ball.bouncesFrom(p2);
+				this.accelerate();
+			} else if (ball.hitsFloor(this.canvas) || ball.hitsCeiling()) {
 				/* ball bounces off ceiling & floor */
 				ball.angle *= -1;
 			} else if (ball.x + ball.width >= this.width) {
@@ -90,18 +79,9 @@
 				console.log('Player 2 wins!!');
 				this.reset();
 			}
-
 			const vector = calcMovementVector(ball.angle);
-			let newX;
-			const calculatedNewX = ball.x + vector.x * state.ballVelocity;
-			/* prevent ball & paddle overlap when collide */
-			if (vector.x < 0 && ballIsWithinP1Height)
-				newX = Math.max(calculatedNewX, p1.x + p1.width);
-			else if (vector.x > 0 && ballIsWithinP2Height)
-				newX = Math.min(calculatedNewX, p2.x - ball.width);
-			else newX = calculatedNewX;
-			ball.x = newX;
-			ball.y += vector.y * state.ballVelocity;
+
+			ball.moves(vector, { leftLimit: p1, rightLimit: p2 });
 		};
 
 		app.reset = function () {
@@ -113,28 +93,37 @@
 			this.clear();
 			this.nodes = [];
 			state.is = CONST.NEW_GAME;
-			state.ballVelocity = 8;
-			state.playerVelocity = 8;
 
-			const p1 = {
-				id: CONST.player1,
-				x: this.width * CONST.playerPadding,
-				y: this.height * (1 - CONST.playerHeight) / 2,
-				width: this.width * CONST.playerWidth,
-				height: this.height * CONST.playerHeight,
-			};
+			const p1 = new CanvasNode(
+				CONST.player1,
+				this.width * CONST.playerPadding,
+				this.height * (1 - CONST.playerHeight) / 2,
+				this.width * CONST.playerWidth,
+				this.height * CONST.playerHeight,
+				'#777',
+				CONST.initialPlayerVelocity,
+			);
 
-			const p2 = {
-				id: CONST.player2,
-				x: this.width * (1 - CONST.playerWidth - CONST.playerPadding), // far right
-				y: this.height * (1 - CONST.playerHeight) / 2,
-				width: this.width * CONST.playerWidth,
-				height: this.height * CONST.playerHeight,
-			};
+			const p2 = new CanvasNode(
+				CONST.player2,
+				this.width * (1 - CONST.playerWidth - CONST.playerPadding), // far right
+				this.height * (1 - CONST.playerHeight) / 2,
+				this.width * CONST.playerWidth,
+				this.height * CONST.playerHeight,
+				'#777',
+				CONST.initialPlayerVelocity,
+			);
 
-			const ball = new Ball(CONST.ball, this.canvas, CONST.ballSize, '#ccc');
+			const ball = new Ball(
+				CONST.ball,
+				this.canvas,
+				CONST.ballSize,
+				'#ccc',
+				CONST.maxBounceAngle,
+				CONST.initialBallVelocity,
+			);
+
 			this.nodes.push(ball, p1, p2);
-			switchColors(state.is, ball, p1, p2);
 		}
 
 		app.pause = function () {
@@ -143,6 +132,14 @@
 
 		app.start = function () {
 			state.is = CONST.PLAYING;
+		}
+
+		app.accelerate = function () {
+			this.nodes.forEach(node => {
+				if (node.velocity) {
+					node.accelerate(CONST.acceleration);
+				}
+			})
 		}
 	</script>
 </body>
